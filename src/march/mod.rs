@@ -141,7 +141,8 @@ impl<'a> MarchService<'a> {
     pub fn update_alarm(&mut self) -> Result<(), Error> {
         if let Some(deadline) = self.heap.peek_deadline() {
             let delta_ns = if deadline > self.initial_ns { deadline - self.initial_ns } else { 0 };
-            let ticks = self.initial_ticks + (delta_ns as u128 * self.freq as u128 / 1_000_000_000) as u64;
+            let ticks =
+                self.initial_ticks + (delta_ns as u128 * self.freq as u128 / 1_000_000_000) as u64;
             let kernel = self.kernel_cap;
             kernel.set_alarm(ticks as usize, self.endpoint.cap())?;
         }
