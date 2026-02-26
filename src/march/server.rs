@@ -24,7 +24,7 @@ impl<'a> SystemService for MarchService<'a> {
         self.initial_ticks = get_time();
         self.rescan_devices()?;
         log!("Hooking to Unicorn for timer devices...");
-        let target = HookTarget::Type(LogicDeviceType::Timer(0));
+        let target = HookTarget::Type(LogicDeviceType::Timer);
         self.dev_client.hook(Badge::null(), target, self.endpoint.cap())?;
         log!("Registering Timer Service...");
         self.res_client.register_cap(

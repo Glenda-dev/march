@@ -7,7 +7,7 @@ use glenda::ipc::{Badge, MsgTag, UTCB};
 use glenda::protocol::device::{DeviceQuery, LogicDeviceType};
 use glenda::utils::manager::{CSpaceManager, CSpaceService};
 use glenda_drivers::client::timer::TimerClient;
-use glenda_drivers::interface::TimerDriver;
+use glenda_drivers::interface::{TimerDriver, DriverClient};
 use heap::TimerHeap;
 
 pub mod heap;
@@ -90,7 +90,11 @@ impl<'a> MarchService<'a> {
     }
 
     pub fn rescan_devices(&mut self) -> Result<(), Error> {
-        let query = DeviceQuery { name: None, compatible: alloc::vec![], dev_type: Some(11) };
+        let query = DeviceQuery {
+            name: None,
+            compatible: alloc::vec![],
+            dev_type: Some(LogicDeviceType::Timer),
+        };
         if let Ok(names) = self.dev_client.query(Badge::null(), query) {
             for name in names {
                 // Check if already discovered
@@ -99,17 +103,24 @@ impl<'a> MarchService<'a> {
                 }
 
                 if let Ok((_, desc)) = self.dev_client.get_logic_desc(Badge::null(), &name) {
-                    if let LogicDeviceType::Timer(freq) = desc.dev_type {
-                        log!("Discovered timer: {} with freq={} Hz", name, freq);
+                    if let LogicDeviceType::Timer = desc.dev_type {
                         let slot = self.cspace_mgr.alloc(self.res_client)?;
-                        let ep = self.dev_client.alloc_logic(Badge::null(), 11, &name, slot)?;
-                        let tc = TimerClient::new(ep);
-
-                        self.timer_sources.push(TimerSource {
-                            name: name.clone(),
-                            freq,
-                            client: tc,
-                        });
+                        let ep = self.dev_client.alloc_logic(
+                            Badge::null(),
+                            LogicDeviceType::Timer,
+                            &name,
+                            slot,
+                        )?;
+                        let mut tc = TimerClient::new(ep);
+                        if let Ok(_) = tc.connect() {
+                            let freq = tc.freq();
+                            log!("Discovered timer: {} with freq={} Hz", name, freq);
+                            self.timer_sources.push(TimerSource {
+                                name: name.clone(),
+                                freq,
+                                client: tc,
+                            });
+                        }
                     }
                 }
             }
