@@ -1,0 +1,9 @@
+[package]
+name = "march"
+version = "0.1.0"
+edition = "2024"
+description = "Time Service for Glenda"
+
+[dependencies]
+libglenda-rs = { path = "../../lib/libglenda-rs", features = ["rt-service"] }
+libglenda_drivers-rs = { path = "../../lib/libglenda_drivers-rs" }
