@@ -17,7 +17,7 @@ use glenda::interface::SystemService;
 use glenda::interface::resource::ResourceService;
 use glenda::ipc::Badge;
 use glenda::protocol::resource::{self, ResourceType};
-use glenda::utils::manager::CSpaceManager;
+use glenda::utils::manager::{CSpaceManager, VSpaceManager};
 use layout::{DEVICE_CAP, DEVICE_SLOT, INIT_CAP, INIT_SLOT, KERNEL_CAP, KERNEL_SLOT};
 use march::MarchService;
 
@@ -29,6 +29,7 @@ fn main() -> usize {
     // 1. Setup resource clients
     let mut res_client = ResourceClient::new(MONITOR_CAP);
     let mut cspace_mgr = CSpaceManager::new(CSPACE_CAP, 0x1000);
+    let mut vspace_mgr = VSpaceManager::new(glenda::cap::VSPACE_CAP, 0x7000_0000, 0x8000_0000);
 
     // Create endpoint for march service
     res_client
@@ -53,6 +54,7 @@ fn main() -> usize {
     let mut march = MarchService::new(
         &mut res_client,
         &mut cspace_mgr,
+        &mut vspace_mgr,
         &mut dev_client,
         &mut init_client,
         KERNEL_CAP,

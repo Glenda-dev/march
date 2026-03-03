@@ -5,7 +5,8 @@ use glenda::error::Error;
 use glenda::interface::device::DeviceService;
 use glenda::ipc::{Badge, MsgTag, UTCB};
 use glenda::protocol::device::{DeviceQuery, LogicDeviceType};
-use glenda::utils::manager::{CSpaceManager, CSpaceService};
+use glenda::interface::CSpaceService;
+use glenda::utils::manager::{CSpaceManager, VSpaceManager};
 use glenda_drivers::client::timer::TimerClient;
 use glenda_drivers::interface::{TimerDriver, DriverClient};
 use heap::TimerHeap;
@@ -33,6 +34,7 @@ pub struct MarchService<'a> {
     pub dev_client: &'a mut DeviceClient,
     pub res_client: &'a mut ResourceClient,
     pub cspace_mgr: &'a mut CSpaceManager,
+    pub vspace_mgr: &'a mut VSpaceManager,
     pub heap: TimerHeap,
     pub init_client: &'a mut InitClient,
     pub timer_sources: alloc::vec::Vec<TimerSource>,
@@ -43,6 +45,7 @@ impl<'a> MarchService<'a> {
     pub fn new(
         res_client: &'a mut ResourceClient,
         cspace_mgr: &'a mut CSpaceManager,
+        vspace_mgr: &'a mut VSpaceManager,
         dev_client: &'a mut DeviceClient,
         init_client: &'a mut InitClient,
         kernel_cap: Kernel,
@@ -60,6 +63,7 @@ impl<'a> MarchService<'a> {
             dev_client,
             res_client,
             cspace_mgr,
+            vspace_mgr,
             heap: TimerHeap::new(),
             init_client,
             timer_sources: alloc::vec::Vec::new(),
@@ -112,7 +116,7 @@ impl<'a> MarchService<'a> {
                             slot,
                         )?;
                         let mut tc = TimerClient::new(ep);
-                        if let Ok(_) = tc.connect() {
+                        if let Ok(_) = tc.connect(self.vspace_mgr, self.cspace_mgr) {
                             let freq = tc.freq();
                             log!("Discovered timer: {} with freq={} Hz", name, freq);
                             self.timer_sources.push(TimerSource {

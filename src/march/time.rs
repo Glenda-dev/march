@@ -3,7 +3,7 @@ use glenda::arch::time::get_time;
 use glenda::error::Error;
 use glenda::interface::TimeService;
 use glenda::ipc::Badge;
-use glenda::utils::manager::CSpaceService;
+use glenda::interface::CSpaceService;
 use glenda_drivers::interface::TimerDriver;
 
 impl<'a> TimeService for MarchService<'a> {
