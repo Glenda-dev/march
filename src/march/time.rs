@@ -5,7 +5,7 @@ use glenda::error::Error;
 use glenda::interface::CSpaceService;
 use glenda::interface::TimeService;
 use glenda::ipc::Badge;
-use glenda_drivers::interface::TimerDriver;
+use glenda::drivers::interface::TimerDriver;
 
 impl<'a> TimeService for MarchService<'a> {
     fn time_now(&mut self, _badge: Badge) -> Result<u64, Error> {

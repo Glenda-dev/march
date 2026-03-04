@@ -7,8 +7,8 @@ use glenda::ipc::{Badge, MsgTag, UTCB};
 use glenda::protocol::device::{DeviceQuery, LogicDeviceType};
 use glenda::interface::CSpaceService;
 use glenda::utils::manager::{CSpaceManager, VSpaceManager};
-use glenda_drivers::client::timer::TimerClient;
-use glenda_drivers::interface::{TimerDriver, DriverClient};
+use glenda::drivers::client::timer::TimerClient;
+use glenda::drivers::interface::{TimerDriver, DriverClient};
 use heap::TimerHeap;
 
 pub mod heap;
