@@ -1,9 +1,10 @@
 use super::MarchService;
 use glenda::arch::time::get_time;
+use glenda::cap::CSPACE_CAP;
 use glenda::error::Error;
+use glenda::interface::CSpaceService;
 use glenda::interface::TimeService;
 use glenda::ipc::Badge;
-use glenda::interface::CSpaceService;
 use glenda_drivers::interface::TimerDriver;
 
 impl<'a> TimeService for MarchService<'a> {
@@ -17,7 +18,7 @@ impl<'a> TimeService for MarchService<'a> {
         let now = self.get_wall_time_ns();
         let deadline = now + (ms as u64) * 1_000_000;
         let slot = self.cspace_mgr.alloc(self.res_client)?;
-        self.cspace_mgr.root().move_cap(self.reply.cap(), slot)?;
+        CSPACE_CAP.move_cap(self.reply.cap(), slot)?;
         self.heap.push(deadline, slot);
         let _ = self.update_alarm();
         Ok(())
