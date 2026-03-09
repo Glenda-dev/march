@@ -78,7 +78,7 @@ impl<'a> MarchService<'a> {
     }
 
     pub fn get_wall_time_ns(&self) -> u64 {
-        let current_ticks = get_time();
+        let current_ticks = get_time() as u64;
         let elapsed_ticks = current_ticks.wrapping_sub(self.initial_ticks);
         let mut elapsed_ns = (elapsed_ticks as u128 * 1_000_000_000 / self.freq as u128) as u64;
         if self.drift_ppb != 0 {
@@ -89,7 +89,7 @@ impl<'a> MarchService<'a> {
     }
 
     pub fn get_mono_time_ns(&self) -> u64 {
-        let current_ticks = get_time();
+        let current_ticks = get_time() as u64;
         (current_ticks as u128 * 1_000_000_000 / self.freq as u128) as u64
     }
 
