@@ -1,14 +1,14 @@
 use glenda::arch::time::get_time;
-use glenda::cap::{CapPtr, Endpoint, Kernel, Reply};
+use glenda::cap::{CSPACE_CAP, CapPtr, Endpoint, Kernel, Reply};
 use glenda::client::{DeviceClient, InitClient, ResourceClient};
+use glenda::drivers::client::timer::TimerClient;
+use glenda::drivers::interface::{DriverClient, TimerDriver};
 use glenda::error::Error;
+use glenda::interface::CSpaceService;
 use glenda::interface::device::DeviceService;
 use glenda::ipc::{Badge, MsgTag, UTCB};
 use glenda::protocol::device::{DeviceQuery, LogicDeviceType};
-use glenda::interface::CSpaceService;
 use glenda::utils::manager::{CSpaceManager, VSpaceManager};
-use glenda::drivers::client::timer::TimerClient;
-use glenda::drivers::interface::{TimerDriver, DriverClient};
 use heap::TimerHeap;
 
 pub mod heap;
@@ -146,7 +146,7 @@ impl<'a> MarchService<'a> {
                 log!("Selecting reference timer: {} (freq={})", name, best_freq);
                 self.reference_index = Some(idx);
                 let rtc_time = self.timer_sources[idx].client.get_time();
-                let ticks = get_time();
+                let ticks = get_time() as u64;
                 self.update_time_base(rtc_time, ticks);
             }
         }
@@ -170,8 +170,26 @@ impl<'a> MarchService<'a> {
             let mut utcb = unsafe { UTCB::new() };
             utcb.clear();
             utcb.set_msg_tag(MsgTag::ok());
-            let _ = Reply::from(slot).reply(&mut utcb);
-            let _ = self.cspace_mgr.free(slot);
+            let recyclable = match Reply::from(slot).reply(&mut utcb) {
+                Ok(()) => true,
+                Err(reply_err) => {
+                    warn!(
+                        "reply failed for timer slot {:?}, checking cleanup path: {:?}",
+                        slot, reply_err
+                    );
+                    match CSPACE_CAP.delete(slot) {
+                        Ok(()) => true,
+                        Err(e) if e == Error::InvalidSlot || e == Error::InvalidCapability => true,
+                        Err(e) => {
+                            warn!("delete failed for timer slot {:?}, skip recycle: {:?}", slot, e);
+                            false
+                        }
+                    }
+                }
+            };
+            if recyclable {
+                let _ = self.cspace_mgr.free(slot);
+            }
         }
         Ok(())
     }
