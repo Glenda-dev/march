@@ -1,6 +1,6 @@
 use super::MarchService;
 use glenda::arch::time::get_time;
-use glenda::cap::{CapPtr, Endpoint, Reply};
+use glenda::cap::{CSPACE_CAP, CapPtr, Endpoint, Reply};
 use glenda::error::Error;
 use glenda::interface::init::InitService;
 use glenda::interface::resource::ResourceService;
@@ -21,7 +21,7 @@ impl<'a> SystemService for MarchService<'a> {
             Ok(f) => f as u64,
             Err(_) => 10_000_000,
         };
-        self.initial_ticks = get_time();
+        self.initial_ticks = get_time() as u64;
         self.rescan_devices()?;
         log!("Hooking to Unicorn for timer devices...");
         let target = HookTarget::Type(LogicDeviceType::Timer);
@@ -62,6 +62,7 @@ impl<'a> SystemService for MarchService<'a> {
                 }
                 Err(Error::Success) => {
                     // Handled notification, skip reply
+                    let _ = CSPACE_CAP.delete(self.reply.cap());
                 }
                 Err(e) => {
                     let badge = utcb.get_badge();
