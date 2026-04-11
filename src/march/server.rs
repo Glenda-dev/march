@@ -25,33 +25,33 @@ impl<'a> SystemService for MarchService<'a> {
         self.rescan_devices()?;
         log!("Hooking to Unicorn for timer devices...");
         let target = HookTarget::Type(LogicDeviceType::Timer);
-        self.dev_client.hook(Badge::null(), target, self.endpoint.cap())?;
+        self.dev_client.hook(Badge::null(), target, self.ipc.endpoint.cap())?;
         log!("Registering Timer Service...");
         self.res_client.register_cap(
             Badge::null(),
             ResourceType::Endpoint,
             TIME_ENDPOINT,
-            self.endpoint.cap(),
+            self.ipc.endpoint.cap(),
         )?;
         Ok(())
     }
     fn listen(&mut self, ep: Endpoint, reply: CapPtr, recv: CapPtr) -> Result<(), Error> {
-        self.endpoint = ep;
-        self.reply = Reply::from(reply);
-        self.recv = recv;
+        self.ipc.endpoint = ep;
+        self.ipc.reply = Reply::from(reply);
+        self.ipc.recv = recv;
         Ok(())
     }
     fn run(&mut self) -> Result<(), Error> {
         self.init_client.report_service(Badge::null(), ServiceState::Running)?;
-        self.running = true;
+        self.ipc.running = true;
 
-        while self.running {
+        while self.ipc.running {
             let mut utcb = unsafe { UTCB::new() };
             utcb.clear();
-            utcb.set_reply_window(self.reply.cap());
-            utcb.set_recv_window(self.recv);
+            utcb.set_reply_window(self.ipc.reply.cap());
+            utcb.set_recv_window(self.ipc.recv);
 
-            if let Err(e) = self.endpoint.recv(&mut utcb) {
+            if let Err(e) = self.ipc.endpoint.recv(&mut utcb) {
                 error!("Recv error: {:?}", e);
                 continue;
             }
@@ -62,7 +62,7 @@ impl<'a> SystemService for MarchService<'a> {
                 }
                 Err(Error::Success) => {
                     // Handled notification, skip reply
-                    let _ = CSPACE_CAP.delete(self.reply.cap());
+                    let _ = CSPACE_CAP.delete(self.ipc.reply.cap());
                 }
                 Err(e) => {
                     let badge = utcb.get_badge();
@@ -124,10 +124,10 @@ impl<'a> SystemService for MarchService<'a> {
         }
     }
     fn reply(&mut self, utcb: &mut UTCB) -> Result<(), Error> {
-        self.reply.reply(utcb)
+        self.ipc.reply.reply(utcb)
     }
     fn stop(&mut self) {
-        self.running = false;
+        self.ipc.running = false;
         let _ = self.init_client.report_service(Badge::null(), ServiceState::Stopped);
     }
 }

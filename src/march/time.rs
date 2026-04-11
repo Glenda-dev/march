@@ -18,7 +18,7 @@ impl<'a> TimeService for MarchService<'a> {
         let now = self.get_wall_time_ns();
         let deadline = now + (ms as u64) * 1_000_000;
         let slot = self.cspace_mgr.alloc(self.res_client)?;
-        CSPACE_CAP.transfer_self(self.reply.cap(), slot)?;
+        CSPACE_CAP.transfer_self(self.ipc.reply.cap(), slot)?;
         self.heap.push(deadline, slot);
         let _ = self.update_alarm();
         Ok(())
@@ -29,7 +29,7 @@ impl<'a> TimeService for MarchService<'a> {
                 let _ = self.timer_sources[idx].client.set_time(absolute_ns);
             }
             self.initial_ns = absolute_ns;
-            self.initial_ticks = get_time();
+            self.initial_ticks = get_time() as u64;
         }
         if drift_ppb != 0 {
             self.drift_ppb = drift_ppb;

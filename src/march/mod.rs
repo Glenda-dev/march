@@ -21,16 +21,20 @@ pub struct TimerSource {
     pub client: TimerClient,
 }
 
+pub struct MarchIpc {
+    pub running: bool,
+    pub endpoint: Endpoint,
+    pub reply: Reply,
+    pub recv: CapPtr,
+}
+
 pub struct MarchService<'a> {
     pub kernel_cap: Kernel,
     pub initial_ns: u64,
     pub initial_ticks: u64,
     pub freq: u64,
     pub drift_ppb: i64,
-    pub running: bool,
-    pub endpoint: Endpoint,
-    pub reply: Reply,
-    pub recv: CapPtr,
+    pub ipc: MarchIpc,
     pub dev_client: &'a mut DeviceClient,
     pub res_client: &'a mut ResourceClient,
     pub cspace_mgr: &'a mut CSpaceManager,
@@ -56,10 +60,12 @@ impl<'a> MarchService<'a> {
             initial_ticks: 0,
             freq: 10_000_000,
             drift_ppb: 0,
-            running: false,
-            endpoint: Endpoint::from(CapPtr::null()),
-            reply: Reply::from(CapPtr::null()),
-            recv: CapPtr::null(),
+            ipc: MarchIpc {
+                running: false,
+                endpoint: Endpoint::from(CapPtr::null()),
+                reply: Reply::from(CapPtr::null()),
+                recv: CapPtr::null(),
+            },
             dev_client,
             res_client,
             cspace_mgr,
@@ -159,7 +165,7 @@ impl<'a> MarchService<'a> {
             let ticks =
                 self.initial_ticks + (delta_ns as u128 * self.freq as u128 / 1_000_000_000) as u64;
             let kernel = self.kernel_cap;
-            kernel.set_alarm(ticks as usize, self.endpoint.cap())?;
+            kernel.set_alarm(ticks as usize, self.ipc.endpoint.cap())?;
         }
         Ok(())
     }
