@@ -122,14 +122,20 @@ impl<'a> MarchService<'a> {
                             slot,
                         )?;
                         let mut tc = TimerClient::new(ep);
-                        if let Ok(_) = tc.connect(self.vspace_mgr, self.cspace_mgr) {
-                            let freq = tc.freq();
-                            log!("Discovered timer: {} with freq={} Hz", name, freq);
-                            self.timer_sources.push(TimerSource {
-                                name: name.clone(),
-                                freq,
-                                client: tc,
-                            });
+                        match tc.connect(self.vspace_mgr, self.cspace_mgr) {
+                            Ok(()) => {
+                                let freq = tc.freq();
+                                log!("Discovered timer: {} with freq={} Hz", name, freq);
+                                self.timer_sources.push(TimerSource {
+                                    name: name.clone(),
+                                    freq,
+                                    client: tc,
+                                });
+                            }
+                            Err(e) => {
+                                let _ = CSPACE_CAP.delete(slot);
+                                warn!("Failed to connect to timer device {}: {:?}", name, e);
+                            }
                         }
                     }
                 }
@@ -140,7 +146,7 @@ impl<'a> MarchService<'a> {
         let mut best_freq = 0;
         let mut best_idx = None;
         for (i, source) in self.timer_sources.iter().enumerate() {
-            if source.freq > best_freq {
+            if best_idx.is_none() || source.freq > best_freq {
                 best_freq = source.freq;
                 best_idx = Some(i);
             }

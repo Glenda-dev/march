@@ -22,8 +22,8 @@ impl<'a> SystemService for MarchService<'a> {
             Err(_) => 10_000_000,
         };
         self.initial_ticks = get_time() as u64;
+        log!("Scanning devices...");
         self.rescan_devices()?;
-        log!("Hooking to Unicorn for timer devices...");
         let target = HookTarget::Type(LogicDeviceType::Timer);
         self.dev_client.hook(Badge::null(), target, self.ipc.endpoint.cap())?;
         log!("Registering Timer Service...");
@@ -42,8 +42,15 @@ impl<'a> SystemService for MarchService<'a> {
         Ok(())
     }
     fn run(&mut self) -> Result<(), Error> {
-        self.init_client.report_service(Badge::null(), ServiceState::Running)?;
         self.ipc.running = true;
+        let mut reported_running = false;
+
+        if self.reference_index.is_some() {
+            self.init_client.report_service(Badge::null(), ServiceState::Running)?;
+            reported_running = true;
+        } else {
+            log!("No timer source ready yet, waiting before reporting Running...");
+        }
 
         while self.ipc.running {
             let mut utcb = unsafe { UTCB::new() };
@@ -78,6 +85,12 @@ impl<'a> SystemService for MarchService<'a> {
                     utcb.set_mr(0, e as usize);
                     let _ = self.reply(&mut utcb);
                 }
+            }
+
+            if !reported_running && self.reference_index.is_some() {
+                self.init_client.report_service(Badge::null(), ServiceState::Running)?;
+                reported_running = true;
+                log!("Timer source ready, reported Running to init");
             }
         }
         Ok(())
