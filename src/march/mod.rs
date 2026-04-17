@@ -171,6 +171,7 @@ impl<'a> MarchService<'a> {
             let ticks =
                 self.initial_ticks + (delta_ns as u128 * self.freq as u128 / 1_000_000_000) as u64;
             let kernel = self.kernel_cap;
+            log!("Setting kernel alarm for deadline {} ns (ticks={})", deadline, ticks);
             kernel.set_alarm(ticks as usize, self.ipc.endpoint.cap())?;
         }
         Ok(())
@@ -178,30 +179,15 @@ impl<'a> MarchService<'a> {
 
     pub fn check_timers(&mut self) -> Result<(), Error> {
         let now = self.get_wall_time_ns();
+        log!("Checking timers at {} ns", now);
         while let Some(slot) = self.heap.pop_expired(now) {
             let mut utcb = unsafe { UTCB::new() };
             utcb.clear();
             utcb.set_msg_tag(MsgTag::ok());
-            let recyclable = match Reply::from(slot).reply(&mut utcb) {
-                Ok(()) => true,
-                Err(reply_err) => {
-                    warn!(
-                        "reply failed for timer slot {:?}, checking cleanup path: {:?}",
-                        slot, reply_err
-                    );
-                    match CSPACE_CAP.delete(slot) {
-                        Ok(()) => true,
-                        Err(e) if e == Error::InvalidSlot || e == Error::InvalidCapability => true,
-                        Err(e) => {
-                            warn!("delete failed for timer slot {:?}, skip recycle: {:?}", slot, e);
-                            false
-                        }
-                    }
-                }
+            if let Err(e) = Reply::from(slot).reply(&mut utcb) {
+                warn!("reply failed for timer slot {:?}, checking cleanup path: {:?}", slot, e)
             };
-            if recyclable {
-                let _ = self.cspace_mgr.free(slot);
-            }
+            let _ = self.cspace_mgr.free(slot);
         }
         Ok(())
     }

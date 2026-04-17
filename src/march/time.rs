@@ -15,13 +15,19 @@ impl<'a> TimeService for MarchService<'a> {
         Ok(self.get_mono_time_ns())
     }
     fn sleep(&mut self, _badge: Badge, ms: usize) -> Result<(), Error> {
+        if ms == 0 {
+            return Ok(());
+        }
+
         let now = self.get_wall_time_ns();
         let deadline = now + (ms as u64) * 1_000_000;
         let slot = self.cspace_mgr.alloc(self.res_client)?;
         CSPACE_CAP.transfer_self(self.ipc.reply.cap(), slot)?;
         self.heap.push(deadline, slot);
         let _ = self.update_alarm();
-        Ok(())
+        // Reply capability has been moved into timer heap for deferred wake-up;
+        // signal caller path to skip immediate reply.
+        Err(Error::Success)
     }
     fn adj_time(&mut self, _badge: Badge, absolute_ns: u64, drift_ppb: i64) -> Result<(), Error> {
         if absolute_ns != 0 {
