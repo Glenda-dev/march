@@ -22,6 +22,7 @@ impl<'a> SystemService for MarchService<'a> {
             Err(_) => 10_000_000,
         };
         self.initial_ticks = get_time() as u64;
+        self.create_alarm_notify_cap()?;
         log!("Scanning devices...");
         self.rescan_devices()?;
         let target = HookTarget::Type(LogicDeviceType::Timer);

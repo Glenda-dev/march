@@ -1,5 +1,6 @@
+use crate::layout::{ALARM_CAP, ALARM_SLOT};
 use glenda::arch::time::get_time;
-use glenda::cap::{CSPACE_CAP, CapPtr, Endpoint, Kernel, Reply};
+use glenda::cap::{CSPACE_CAP, CapPtr, Endpoint, Kernel, Reply, Rights};
 use glenda::client::{DeviceClient, InitClient, ResourceClient};
 use glenda::drivers::client::timer::TimerClient;
 use glenda::drivers::interface::{DriverClient, TimerDriver};
@@ -14,6 +15,8 @@ use heap::TimerHeap;
 pub mod heap;
 pub mod server;
 pub mod time;
+
+const ALARM_NOTIFY_BADGE: usize = 1;
 
 pub struct TimerSource {
     pub name: alloc::string::String,
@@ -35,6 +38,7 @@ pub struct MarchService<'a> {
     pub freq: u64,
     pub drift_ppb: i64,
     pub ipc: MarchIpc,
+    pub alarm_notify_ep: Endpoint,
     pub dev_client: &'a mut DeviceClient,
     pub res_client: &'a mut ResourceClient,
     pub cspace_mgr: &'a mut CSpaceManager,
@@ -66,6 +70,7 @@ impl<'a> MarchService<'a> {
                 reply: Reply::from(CapPtr::null()),
                 recv: CapPtr::null(),
             },
+            alarm_notify_ep: Endpoint::from(CapPtr::null()),
             dev_client,
             res_client,
             cspace_mgr,
@@ -171,9 +176,21 @@ impl<'a> MarchService<'a> {
             let ticks =
                 self.initial_ticks + (delta_ns as u128 * self.freq as u128 / 1_000_000_000) as u64;
             let kernel = self.kernel_cap;
+            let alarm_ep = self.alarm_notify_ep.cap();
             log!("Setting kernel alarm for deadline {} ns (ticks={})", deadline, ticks);
-            kernel.set_alarm(ticks as usize, self.ipc.endpoint.cap())?;
+            kernel.set_alarm(ticks as usize, alarm_ep)?;
         }
+        Ok(())
+    }
+
+    pub fn create_alarm_notify_cap(&mut self) -> Result<(), Error> {
+        CSPACE_CAP.mint_self(
+            self.ipc.endpoint.cap(),
+            ALARM_SLOT,
+            Badge::new(ALARM_NOTIFY_BADGE),
+            Rights::ALL,
+        )?;
+        self.alarm_notify_ep = ALARM_CAP;
         Ok(())
     }
 
