@@ -177,7 +177,6 @@ impl<'a> MarchService<'a> {
                 self.initial_ticks + (delta_ns as u128 * self.freq as u128 / 1_000_000_000) as u64;
             let kernel = self.kernel_cap;
             let alarm_ep = self.alarm_notify_ep.cap();
-            log!("Setting kernel alarm for deadline {} ns (ticks={})", deadline, ticks);
             kernel.set_alarm(ticks as usize, alarm_ep)?;
         }
         Ok(())
@@ -196,7 +195,6 @@ impl<'a> MarchService<'a> {
 
     pub fn check_timers(&mut self) -> Result<(), Error> {
         let now = self.get_wall_time_ns();
-        log!("Checking timers at {} ns", now);
         while let Some(slot) = self.heap.pop_expired(now) {
             let mut utcb = unsafe { UTCB::new() };
             utcb.clear();
