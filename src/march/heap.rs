@@ -26,16 +26,11 @@ pub struct TimerHeap {
 
 impl TimerHeap {
     pub fn new() -> Self {
-        Self {
-            heap: BinaryHeap::new(),
-        }
+        Self { heap: BinaryHeap::new() }
     }
 
     pub fn push(&mut self, deadline_ns: u64, reply_cap: CapPtr) {
-        self.heap.push(TimerEvent {
-            deadline_ns,
-            reply_cap,
-        });
+        self.heap.push(TimerEvent { deadline_ns, reply_cap });
     }
 
     pub fn peek_deadline(&self) -> Option<u64> {
